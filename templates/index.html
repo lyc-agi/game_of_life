@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conway's Game of Life</title>
+    <style>
+        button {
+            padding: 20px 30px;  /* 增加内边距，使按钮更大 */
+            font-size: 20px;     /* 增加字体大小 */
+            cursor: pointer;
+            width: 200px;        /* 设置按钮的宽度 */
+            margin-bottom: 20px; /* 可选：增加按钮之间的下间距 */
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        td {
+            width: 30px;
+            height: 30px;
+            border: 1px solid black;
+            text-align: center;
+            cursor: pointer;
+        }
+        .alive {
+            background-color: green;
+        }
+        .leaderboard {
+            margin-left: 20px;
+            border: 1px solid black;
+            padding: 10px;
+        }
+        .leaderboard h3 {
+            margin: 0;
+            margin-bottom: 10px;
+        }
+        .leaderboard ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .leaderboard li {
+            margin-bottom: 5px;
+        }
+    </style>
+    <script>
+        let username = "";
+        let selectedCells = [];
+
+        function toggleCell(x, y) {
+            const cell = document.getElementById(`cell-${x}-${y}`);
+            if (cell.classList.contains('alive')) {
+                cell.classList.remove('alive');
+                selectedCells = selectedCells.filter(([cx, cy]) => cx !== x || cy !== y);
+            } else if (selectedCells.length < 10) {
+                cell.classList.add('alive');
+                selectedCells.push([x, y]);
+            } else {
+                alert("You can only select up to 10 cells!");
+            }
+        }
+
+        async function register() {
+            username = prompt("Enter your username:");
+            const response = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            if (response.ok) {
+                alert("Registration successful!");
+            } else {
+                alert("Error: " + (await response.json()).error);
+            }
+        }
+
+        async function play() {
+            const response = await fetch('/play', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, cells: selectedCells })
+            });
+            const data = await response.json();
+            alert("Your score: " + data.score);
+            updateLeaderboard();
+        }
+
+        async function updateLeaderboard() {
+            const response = await fetch('/leaderboard');
+            const scores = await response.json();
+            const leaderboard = document.getElementById('leaderboard');
+            const list = leaderboard.querySelector('ul');
+            list.innerHTML = ""; // 清空当前列表
+            scores.forEach(([user, score]) => {
+                const li = document.createElement('li');
+                li.textContent = `${user}: ${score}`;
+                list.appendChild(li);
+            });
+        }
+
+        // 页面加载时自动更新排行榜
+        window.onload = updateLeaderboard;
+    </script>
+</head>
+<body>
+    <h1>Conway's Game of Life</h1>
+    <button onclick="register()">Register</button>
+    <br>
+    <button onclick="play()">Play</button>
+    <h2>Click to select up to 10 live cells:</h2>
+    <div class="container">
+        <table>
+            <tbody>
+                {% for x in range(grid_size) %}
+                <tr>
+                    {% for y in range(grid_size) %}
+                    <td id="cell-{{x}}-{{y}}" onclick="toggleCell({{x}}, {{y}})"></td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div id="leaderboard" class="leaderboard">
+            <h3>Leaderboard</h3>
+            <ul></ul>
+        </div>
+    </div>
+</body>
+</html>
